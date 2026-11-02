@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IA in classe — Quiz per docenti</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5ef;color:#243e32;font:18px/1.6 system-ui,sans-serif}
+main{max-width:800px;margin:40px auto;padding:30px;background:white;border-radius:18px}
+h1,h2{line-height:1.3}
+h1{font-size:36px}
+button{font:inherit;background:#28543d;color:white;border:0;border-radius:8px;padding:12px 20px;cursor:pointer;margin:12px 0}
+button:disabled{background:#ccc;cursor:default}
+label{display:block;border:1px solid #bfcdbc;border-radius:8px;padding:14px;margin:12px 0;cursor:pointer}
+label:has(input:checked){background:#edf4e8;border-color:#28543d}
+input{margin-right:10px}
+fieldset{border:0;padding:0}
+legend{font-weight:bold;font-size:23px}
+progress{width:100%;accent-color:#28543d}
+.feedback{background:#edf4e8;padding:18px;border-radius:8px}
+.small{font-size:14px;color:#536658}
+details{border-bottom:1px solid #ddd;padding:15px 0}
+summary{cursor:pointer;font-weight:bold}
+:focus-visible{outline:3px solid #ad7914;outline-offset:4px}
+[hidden]{display:none!important}
+@media(max-width:600px){main{margin:12px;padding:22px}h1{font-size:29px}}
+</style>
+</head>
+<body>
+<main>
+<section id="intro">
+<p class="small">FORMAZIONE DOCENTI · AUTOVALUTAZIONE</p>
+<h1>IA in classe: scelte consapevoli</h1>
+<p>10 domande sull’uso responsabile dell’intelligenza artificiale a scuola.</p>
+<p>Scegli una risposta per domanda. Dopo la conferma riceverai una spiegazione.</p>
+<button id="start">Inizia il quiz →</button>
+<p class="small">Non servono registrazione o dati personali. Il punteggio non viene inviato al formatore. Ricaricando la pagina ricomincerai da zero.</p>
+</section>
+
+<section id="quiz" hidden>
+<p id="counter"></p>
+<progress id="progress" max="10" value="0" aria-label="Domande completate"></progress>
+<fieldset id="options">
+<legend id="question" tabindex="-1"></legend>
+<div id="answers"></div>
+</fieldset>
+<div id="feedback" class="feedback" role="status" hidden></div>
+<button id="confirm" disabled>Conferma risposta</button>
+<button id="next" hidden>Prossima domanda →</button>
+</section>
+
+<section id="results" hidden>
+<h2 id="resultTitle" tabindex="-1">Quiz completato!</h2>
+<p id="score"></p>
+<p>Rivedi le spiegazioni per approfondire gli argomenti.</p>
+<button id="restart">Riprova il quiz</button>
+<h2>Riepilogo</h2>
+<div id="review"></div>
+</section>
+
+<p class="small">Strumento di autovalutazione, non una certificazione. Segui sempre le indicazioni del tuo istituto e consulta il responsabile della protezione dei dati quando necessario.</p>
+</main>
+
+<script>
+"use strict";
+const questions = [
+{
+q:"Vuoi adattare un’attività a un alunno con l’aiuto di un chatbot. Come procedi?",
+a:[
+"Carico la diagnosi completa dell’alunno.",
+"Descrivo le esigenze senza dati identificativi o sensibili, usando strumenti autorizzati dalla scuola.",
+"Inserisco nome e voti, purché non condivida la risposta."
+],
+c:1,
+e:"Minimizza i dati personali. Non inserire indiscriminatamente nomi, diagnosi o informazioni riservate nei servizi di IA. Segui le procedure della scuola."
+},
+{
+q:"Un’IA propone una citazione con autore, titolo e anno. Che cosa fai?",
+a:[
+"Verifico la citazione nella fonte originale o in risorse affidabili.",
+"La considero vera perché è dettagliata.",
+"La uso se il chatbot la ripete due volte."
+],
+c:0,
+e:"I modelli possono inventare fatti e riferimenti plausibili. La precisione della forma e la ripetizione non garantiscono la correttezza."
+},
+{
+q:"Un generatore rappresenta sempre gli scienziati come uomini. Che cosa suggerisce questo risultato?",
+a:[
+"Che l’IA è sempre neutrale.",
+"Che le immagini sono prove statistiche.",
+"Che l’IA può riprodurre stereotipi e richiede una revisione critica."
+],
+c:2,
+e:"I dati e le scelte di progettazione possono introdurre distorsioni. Analizza gli stereotipi con la classe e diversifica criticamente gli esempi."
+},
+{
+q:"Come può aiutarti l’IA nella valutazione di un elaborato?",
+a:[
+"Può assegnare autonomamente il voto definitivo.",
+"Può suggerire un feedback: il docente verifica e decide, nel rispetto delle regole sui dati.",
+"Può conoscere con certezza l’impegno dello studente."
+],
+c:1,
+e:"L’IA può supportare il feedback, ma la responsabilità della valutazione resta al docente. Verifica accuratezza, coerenza con la rubrica e adeguatezza al contesto."
+},
+{
+q:"Quale regola è utile per l’uso dell’IA nei compiti?",
+a:[
+"Concordare gli usi consentiti e chiedere di dichiarare il contributo dell’IA.",
+"Consentire qualsiasi uso purché non venga dichiarato.",
+"Considerare ogni uso automaticamente un plagio."
+],
+c:0,
+e:"Regole esplicite favoriscono trasparenza e valutabilità del lavoro personale. Devono essere coerenti con gli obiettivi didattici e le indicazioni dell’istituto."
+},
+{
+q:"Quale attività favorisce il pensiero critico?",
+a:[
+"Copiare la risposta dell’IA senza leggerla.",
+"Delegare l’intero compito al chatbot.",
+"Confrontare la risposta dell’IA con fonti attendibili e motivare le correzioni."
+],
+c:2,
+e:"Confrontare, argomentare e correggere richiede un’elaborazione personale. L’IA diventa un supporto e un oggetto di analisi, mentre lo studente esercita il giudizio."
+},
+{
+q:"Puoi pubblicare liberamente ogni immagine generata dall’IA?",
+a:[
+"Sì, non esistono mai vincoli.",
+"Prima verifico condizioni d’uso, possibili diritti di terzi e regole della scuola.",
+"Sì, se nascondo il nome dello strumento."
+],
+c:1,
+e:"La generazione automatica non garantisce assenza di vincoli. Controlla condizioni del servizio e possibili diritti su opere, marchi o persone rappresentate."
+},
+{
+q:"L’IA ha semplificato un testo per la classe. Qual è il passo successivo?",
+a:[
+"Verifico accuratezza, accessibilità e adeguatezza agli studenti e agli obiettivi.",
+"Lo distribuisco senza leggerlo.",
+"Elimino sempre tutti i termini specifici della disciplina."
+],
+c:0,
+e:"Semplificare non deve alterare i concetti. Il docente controlla contenuti, linguaggio e struttura, adattandoli ai bisogni reali degli studenti."
+},
+{
+q:"Un rilevatore segnala che un elaborato è stato scritto dall’IA. Come procedi?",
+a:[
+"Assegno automaticamente un’insufficienza.",
+"Pubblico il risultato per scoraggiare la classe.",
+"Non lo considero una prova conclusiva: esamino il processo di lavoro e dialogo con lo studente."
+],
+c:2,
+e:"I rilevatori possono produrre falsi positivi e falsi negativi. Servono elementi contestuali, confronto e rispetto delle procedure dell’istituto."
+},
+{
+q:"Prima di proporre un servizio di IA agli studenti, che cosa verifichi?",
+a:[
+"Soltanto se è gratuito.",
+"Età minima, condizioni d’uso, trattamento dei dati, autorizzazioni della scuola e alternative accessibili.",
+"Soltanto se è popolare."
+],
+c:1,
+e:"La scelta deve considerare tutela dei minori, privacy, accessibilità e finalità didattiche. Segui le procedure dell’istituto e prevedi alternative per chi non può usare il servizio."
+}
+];
+
+const $ = id => document.getElementById(id);
+let current = 0;
+let responses = [];
+
+function show(id) {
+  ["intro","quiz","results"].forEach(name => {
+    $(name).hidden = name !== id;
+  });
+}
+
+function start() {
+  current = 0;
+  responses = [];
+  show("quiz");
+  render();
+}
+
+function render() {
+  const item = questions[current];
+  $("counter").textContent = `Domanda ${current + 1} di ${questions.length}`;
+  $("progress").value = current;
+  $("question").textContent = item.q;
+  $("answers").replaceChildren();
+
+  item.a.forEach((answer, index) => {
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "answer";
+    input.value = index;
+    input.addEventListener("change", () => {
+      $("confirm").disabled = false;
+    });
+    label.append(input, document.createTextNode(answer));
+    $("answers").append(label);
+  });
+
+  $("feedback").hidden = true;
+  $("feedback").replaceChildren();
+  $("confirm").hidden = false;
+  $("confirm").disabled = true;
+  $("next").hidden = true;
+  $("question").focus();
+}
+
+$("start").addEventListener("click", start);
+$("restart").addEventListener("click", start);
+
+$("confirm").addEventListener("click", () => {
+  if (responses.length > current) return;
+  const selected = $("answers").querySelector("input:checked");
+  if (!selected) return;
+
+  const item = questions[current];
+  const answer = Number(selected.value);
+  responses.push(answer);
+
+  $("answers").querySelectorAll("input").forEach(input => {
+    input.disabled = true;
+  });
+
+  const title = document.createElement("strong");
+  title.textContent = answer === item.c
+    ? "Risposta corretta!"
+    : "Non è la risposta corretta.";
+
+  const correct = document.createElement("p");
+  correct.textContent = "Risposta corretta: " + item.a[item.c];
+
+  const explanation = document.createElement("p");
+  explanation.textContent = item.e;
+
+  $("feedback").append(title, correct, explanation);
+  $("feedback").hidden = false;
+  $("progress").value = current + 1;
+  $("confirm").hidden = true;
+  $("next").hidden = false;
+  $("next").textContent = current === questions.length - 1
+    ? "Mostra il risultato →"
+    : "Prossima domanda →";
+  $("next").focus();
+});
+
+$("next").addEventListener("click", () => {
+  if (responses.length !== current + 1) return;
+
+  if (current < questions.length - 1) {
+    current++;
+    render();
+    return;
+  }
+
+  const total = responses.filter((answer, index) =>
+    answer === questions[index].c
+  ).length;
+
+  $("score").textContent =
+    `Hai risposto correttamente a ${total} domande su ${questions.length}.`;
+
+  $("review").replaceChildren();
+
+  questions.forEach((item, index) => {
+    const details = document.createElement("details");
+    const summary = document.createElement("summary");
+    summary.textContent = `${index + 1}. ${item.q}`;
+    details.append(summary);
+
+    [
+      "La tua risposta: " + item.a[responses[index]],
+      "Risposta corretta: " + item.a[item.c],
+      item.e
+    ].forEach(text => {
+      const p = document.createElement("p");
+      p.textContent = text;
+      details.append(p);
+    });
+
+    $("review").append(details);
+  });
+
+  show("results");
+  $("resultTitle").focus();
+});
+</script>
+</body>
+</html>
