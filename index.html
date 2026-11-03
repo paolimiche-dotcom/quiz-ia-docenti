@@ -9,12 +9,12 @@
 body{margin:0;background:#f3f5ef;color:#243e32;font:18px/1.6 system-ui,sans-serif}
 main{max-width:800px;margin:40px auto;padding:30px;background:white;border-radius:18px}
 h1,h2{line-height:1.3}
-h1{font-size:36px}
 button{font:inherit;background:#28543d;color:white;border:0;border-radius:8px;padding:12px 20px;cursor:pointer;margin:12px 0}
 button:disabled{background:#ccc;cursor:default}
 label{display:block;border:1px solid #bfcdbc;border-radius:8px;padding:14px;margin:12px 0;cursor:pointer}
 label:has(input:checked){background:#edf4e8;border-color:#28543d}
-input{margin-right:10px}
+input[type=radio]{margin-right:10px}
+input[type=text]{display:block;width:100%;font:inherit;padding:10px;margin-top:8px}
 fieldset{border:0;padding:0}
 legend{font-weight:bold;font-size:23px}
 progress{width:100%;accent-color:#28543d}
@@ -24,7 +24,7 @@ details{border-bottom:1px solid #ddd;padding:15px 0}
 summary{cursor:pointer;font-weight:bold}
 :focus-visible{outline:3px solid #ad7914;outline-offset:4px}
 [hidden]{display:none!important}
-@media(max-width:600px){main{margin:12px;padding:22px}h1{font-size:29px}}
+@media(max-width:600px){main{margin:12px;padding:22px}}
 </style>
 </head>
 <body>
@@ -33,15 +33,16 @@ summary{cursor:pointer;font-weight:bold}
 <p class="small">FORMAZIONE DOCENTI · AUTOVALUTAZIONE</p>
 <h1>IA in classe: scelte consapevoli</h1>
 <p>10 domande sull’uso responsabile dell’intelligenza artificiale a scuola.</p>
-<p>Scegli una risposta per domanda. Dopo la conferma riceverai una spiegazione.</p>
+<p>Scegli una risposta per domanda. Dopo ogni conferma riceverai una spiegazione.</p>
+<p><strong>Il test si supera con almeno 7 risposte corrette su 10.</strong></p>
+<p>Alla fine potrai inserire il tuo nome e inviare il risultato al formatore.</p>
 <button id="start">Inizia il quiz →</button>
-<p class="small">Non servono registrazione o dati personali. Il punteggio non viene inviato al formatore. Ricaricando la pagina ricomincerai da zero.</p>
 </section>
 
 <section id="quiz" hidden>
 <p id="counter"></p>
 <progress id="progress" max="10" value="0" aria-label="Domande completate"></progress>
-<fieldset id="options">
+<fieldset>
 <legend id="question" tabindex="-1"></legend>
 <div id="answers"></div>
 </fieldset>
@@ -53,17 +54,48 @@ summary{cursor:pointer;font-weight:bold}
 <section id="results" hidden>
 <h2 id="resultTitle" tabindex="-1">Quiz completato!</h2>
 <p id="score"></p>
-<p>Rivedi le spiegazioni per approfondire gli argomenti.</p>
+<p id="outcome" class="feedback"></p>
+
+<h2>Comunica il risultato al formatore</h2>
+<form id="sendForm" method="post" target="_blank">
+<label for="name">Nome e cognome
+<input id="name" type="text" name="participant"
+required maxlength="100" autocomplete="name">
+</label>
+<input id="sendAnswers" type="hidden" name="answers">
+<input id="sendAttempt" type="hidden" name="attempt">
+<p class="small">
+Premendo “Invia il risultato”, nome, risposte, punteggio e data
+saranno registrati nel Foglio Google del formatore per il
+riscontro del corso. Non inserire informazioni sensibili.
+</p>
+<button type="submit">Invia il risultato</button>
+<p class="small">
+Si aprirà una nuova scheda. L’invio è confermato solo se compare
+“Risultato registrato”. Se compare un errore, torna qui e riprova
+senza ricaricare la pagina.
+</p>
+</form>
+
 <button id="restart">Riprova il quiz</button>
-<h2>Riepilogo</h2>
+<p class="small">Invia il risultato prima di ricominciare, se vuoi comunicarlo al formatore.</p>
+<h2>Riepilogo delle risposte</h2>
 <div id="review"></div>
 </section>
 
-<p class="small">Strumento di autovalutazione, non una certificazione. Segui sempre le indicazioni del tuo istituto e consulta il responsabile della protezione dei dati quando necessario.</p>
+<p class="small">
+Strumento di autovalutazione, non una certificazione.
+Segui le indicazioni del tuo istituto e consulta il responsabile
+della protezione dei dati quando necessario.
+</p>
 </main>
 
 <script>
 "use strict";
+
+const RESULTS_URL =
+"https://script.google.com/macros/s/AKfycby1XVMkRrkjvT6cp5xkVRtxtcWk2rT4EyczXP8UbEpc4pcu1XrR8P3kNg_h1EiZaEEReQ/exec";
+
 const questions = [
 {
 q:"Vuoi adattare un’attività a un alunno con l’aiuto di un chatbot. Come procedi?",
@@ -73,7 +105,7 @@ a:[
 "Inserisco nome e voti, purché non condivida la risposta."
 ],
 c:1,
-e:"Minimizza i dati personali. Non inserire indiscriminatamente nomi, diagnosi o informazioni riservate nei servizi di IA. Segui le procedure della scuola."
+e:"Riduci i dati personali al minimo necessario. Non inserire indiscriminatamente nomi, diagnosi o informazioni riservate nei servizi di IA. Segui le procedure della scuola."
 },
 {
 q:"Un’IA propone una citazione con autore, titolo e anno. Che cosa fai?",
@@ -171,22 +203,26 @@ const $ = id => document.getElementById(id);
 let current = 0;
 let responses = [];
 
+$("sendForm").action = RESULTS_URL;
+
 function show(id) {
-  ["intro","quiz","results"].forEach(name => {
-    $(name).hidden = name !== id;
+  ["intro", "quiz", "results"].forEach(section => {
+    $(section).hidden = section !== id;
   });
 }
 
 function start() {
   current = 0;
   responses = [];
+  $("sendForm").reset();
   show("quiz");
   render();
 }
 
 function render() {
   const item = questions[current];
-  $("counter").textContent = `Domanda ${current + 1} di ${questions.length}`;
+  $("counter").textContent =
+    `Domanda ${current + 1} di ${questions.length}`;
   $("progress").value = current;
   $("question").textContent = item.q;
   $("answers").replaceChildren();
@@ -234,7 +270,8 @@ $("confirm").addEventListener("click", () => {
     : "Non è la risposta corretta.";
 
   const correct = document.createElement("p");
-  correct.textContent = "Risposta corretta: " + item.a[item.c];
+  correct.textContent =
+    "Risposta corretta: " + item.a[item.c];
 
   const explanation = document.createElement("p");
   explanation.textContent = item.e;
@@ -264,14 +301,25 @@ $("next").addEventListener("click", () => {
   ).length;
 
   $("score").textContent =
-    `Hai risposto correttamente a ${total} domande su ${questions.length}.`;
+    `Risposte corrette: ${total} su ${questions.length}.`;
 
+  $("outcome").textContent = total >= 7
+    ? "Test superato! Hai raggiunto la soglia di 7/10."
+    : "Test non superato. La soglia è 7/10: puoi rivedere le spiegazioni e riprovare.";
+
+  $("sendAnswers").value = JSON.stringify(responses);
+  $("sendAttempt").value = crypto.randomUUID();
   $("review").replaceChildren();
 
   questions.forEach((item, index) => {
     const details = document.createElement("details");
     const summary = document.createElement("summary");
-    summary.textContent = `${index + 1}. ${item.q}`;
+    const status = responses[index] === item.c
+      ? "Corretta"
+      : "Da rivedere";
+
+    summary.textContent =
+      `${index + 1}. ${item.q} — ${status}`;
     details.append(summary);
 
     [
